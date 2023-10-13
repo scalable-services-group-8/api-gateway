@@ -1,0 +1,104 @@
+version: '3'
+services:
+  user-db:
+    build:
+      context: ./user_service/user_db/
+      dockerfile: Dockerfile
+    container_name: user-mysql-container
+    networks:
+      - user-service-db-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "user-mysql-container"]
+      timeout: 20s
+      retries: 10
+
+  user-microservice:
+    build:
+      context: ./user_service/
+      dockerfile: Dockerfile
+    container_name: user-microservice-container
+    networks:
+      - user-service-db-network
+      - microservice-network
+    ports:
+      - "3001:3001"
+    depends_on:
+      user-db:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:3001/health-check || exit 1
+      interval: 30s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+  
+  booking-db:
+    build:
+      context: ./booking_service/booking_db/
+      dockerfile: Dockerfile
+    container_name: booking-mysql-container
+    networks:
+      - booking-service-db-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "booking-mysql-container"]
+      timeout: 20s
+      retries: 10
+
+  booking-microservice:
+    build:
+      context: ./booking_service/
+      dockerfile: Dockerfile
+    container_name: booking-microservice-container
+    networks:
+      - booking-service-db-network
+      - microservice-network
+    ports:
+      - "3002:3002"
+    depends_on:
+      booking-db:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:3002/health-check || exit 1
+      interval: 30s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+
+
+  transaction-db:
+    build:
+      context: ./transaction_service/transaction_db/
+      dockerfile: Dockerfile
+    container_name: transaction-mysql-container
+    networks:
+      - transaction-service-db-network
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "transaction-mysql-container"]
+      timeout: 20s
+      retries: 10
+
+  transaction-microservice:
+    build:
+      context: ./transaction_service/
+      dockerfile: Dockerfile
+    container_name: transaction-microservice-container
+    networks:
+      - transaction-service-db-network
+      - microservice-network
+    ports:
+      - "3003:3003"
+    depends_on:
+      transaction-db:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:3003/health-check || exit 1
+      interval: 30s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+
+networks:
+  microservice-network:
+  user-service-db-network:
+  booking-service-db-network:
+  transaction-service-db-network:
