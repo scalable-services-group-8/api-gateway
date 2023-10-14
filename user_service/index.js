@@ -1,57 +1,54 @@
 const express = require('express');
-const mysql = require('mysql');
 const app = express();
-
+const Database = require('./db');
+// Config
 const config = require('./config');
-
+const UserModel = require('./user_model');
 const port = config.port;
 
-const db = mysql.createConnection(config.database);
-
-db.connect(err => {
-  if (err) {
-    console.error('Error connecting to MySQL:', err);
-    return;
-  }
-  console.log('Connected to MySQL');
-});
+const dbConnection = new Database(config.database);
 
 app.use(express.json());
 
-app.get('/', (req, res) => {
-  res.status(403).send('Access Forbidden');
+app.get('/', async(req, res) => {
+    res.status(403).send('Access Forbidden');
 });
 
-app.get('/users', (req, res) => {
-  db.query('SELECT * FROM users', (err, results) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
+app.get('/users', async(req, res) => {
+    try {
+        const userObj = new UserModel(dbConnection);
+        const users = await userObj.getAllUsers();
+        res.json(users);
+    } catch (err) {
+        console.error('Error fetching users: ' + err);
+        res.status(500).json({ error: 'An error occurred while fetching users' });
     }
-    res.json(results);
-  });
 });
 
-app.get('/users/:id', (req, res) => {
-  const userId = parseInt(req.params.id);
-  db.query('SELECT * FROM users WHERE id = ?', [userId], (err, results) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
+app.get('/users/:id', async (req, res) => {
+    const userId = parseInt(req.params.id);
+	try {
+		const userObj = new UserModel(dbConnection);
+        const user = await userObj.getUserById(userId);
+		if (user.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.json(user);
+    } catch (err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
     }
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    res.json(results[0]);
-  });
 });
 
-app.get('/health-check', (req, res) => {
-  console.log('Service is running');
-  res.send('Ok');
+app.get('/health-check', async(req, res) => {
+    console.log('Service is running');
+    res.send('Ok');
 });
 
 app.listen(port, () => {
-  console.log(`User Service is listening on port ${port}`);
+    console.log(`User Service is listening on port ${port}`);
 });
 
+module.exports = app;

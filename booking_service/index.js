@@ -1,57 +1,74 @@
 const express = require('express');
-const mysql = require('mysql');
+const axios = require('axios');
 const app = express();
-
+const Database = require('./db');
+// Config
 const config = require('./config');
-
+const BookingModel = require('./booking_model');
 const port = config.port;
 
-const db = mysql.createConnection(config.database);
-
-db.connect(err => {
-  if (err) {
-    console.error('Error connecting to MySQL:', err);
-    return;
-  }
-  console.log('Connected to MySQL');
-});
+const dbConnection = new Database(config.database);
 
 app.use(express.json());
 
 app.get('/', (req, res) => {
-  res.status(403).send('Access Forbidden');
+    res.status(403).send('Access Forbidden');
 });
 
-app.get('/bookings', (req, res) => {
-  db.query('SELECT * FROM bookings', (err, results) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
+app.get('/bookings', async(req, res) => {
+    const userId = req.query.user_id;
+
+	const bookingObj = new BookingModel(dbConnection);
+    if (userId) {
+		// Fetch Booking by user ID
+        const bookings = await bookingObj.getBookingsByUserId(userId);
+        if (bookings.length === 0) {
+            return res.status(404).json({ error: 'Bookings not found' });
+        }
+
+        try {
+            const response = await axios.get(`${config.endpoints.user_microservice}/users/${userId}`);
+            const userData = response.data;
+			
+			const finalResponse = {user: userData, bookings: bookings};
+			return res.json(finalResponse)
+        } catch (err) {
+            console.log('Error fetching user details: ', err);
+            res.status(500).json({ error: 'An error occurred while fetching user details' });
+        }
+    } else {
+        try {
+            const bookings = await bookingObj.getAllBookings();
+            res.json(bookings);
+        } catch (err) {
+            console.error('Error fetching bookings: ' + err);
+            res.status(500).json({ error: 'An error occurred while fetching bookings' });
+        }
     }
-    res.json(results);
-  });
 });
 
-app.get('/bookings/:id', (req, res) => {
-  const bookingId = parseInt(req.params.id);
-  db.query('SELECT * FROM bookings WHERE id = ?', [bookingId], (err, results) => {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
+app.get('/bookings/:id', async(req, res) => {
+    const bookingId = parseInt(req.params.id);
+    try {
+        const bookingObj = new BookingModel(dbConnection);
+        const booking = await bookingObj.getBookingById(bookingId);
+        if (booking.length === 0) {
+            return res.status(404).json({ error: 'Booking not found' });
+        }
+        res.json(booking);
+    } catch (err) {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
     }
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-    res.json(results[0]);
-  });
 });
 
-app.get('/health-check', (req, res) => {
-  console.log('Service is running');
-  res.send('Ok');
+app.get('/health-check', async(req, res) => {
+    console.log('Service is running');
+    res.send('Ok');
 });
 
 app.listen(port, () => {
-  console.log(`Booking Service is listening on port ${port}`);
+    console.log(`Booking Service is listening on port ${port}`);
 });
-

@@ -9,13 +9,17 @@ COPY package*.json ./
 
 # Install the Node.js dependencies
 RUN npm install
+RUN npm install -g nodemon jest
 
 # Bundle app source
 COPY . .
+RUN npm test
+RUN npm uninstall jest
 
 # Expose the service's port
 EXPOSE 3001
 
 # Command to run the service
 CMD [ "node", "index.js" ]
+#CMD ["nodemon", "-L", "--watch", "/usr/src/app/index.js"]
 
