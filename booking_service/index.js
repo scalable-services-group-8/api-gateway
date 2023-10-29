@@ -27,7 +27,7 @@ app.get('/bookings', async(req, res) => {
         }
 
         try {
-            const response = await axios.get(`${config.endpoints.user_microservice}/users/${userId}`);
+            const response = await axios.get(`${config.endpoints.api_gateway}/users/${userId}`);
             const userData = response.data;
 			
 			const finalResponse = {user: userData, bookings: bookings};

@@ -1,5 +1,28 @@
 version: '3'
 services:
+  api-gateway:
+    build:
+      context: ./api_gateway_service/
+      dockerfile: Dockerfile
+    container_name: api-gateway-container
+    networks:
+      - microservice-network
+    ports:
+      - "3000:3000"
+    depends_on:
+      user-microservice:
+        condition: service_healthy
+      booking-microservice:
+        condition: service_healthy
+      transaction-microservice:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:3000/health-check || exit 1
+      interval: 30s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+
   user-db:
     build:
       context: ./user_service/user_db/
@@ -10,7 +33,7 @@ services:
     ports:
       - "3306"
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "user-mysql-container"]
+      test: ["CMD", "mysqladmin ping --password=$(echo $MYSQL_ROOT_PASSWORD) 2>/dev/null"]
       timeout: 20s
       retries: 10
 
@@ -23,10 +46,9 @@ services:
       - user-service-db-network
       - microservice-network
     ports:
-      - "3001:3001"
+      - "3001"
     depends_on:
-      user-db:
-        condition: service_healthy
+      - user-db
     healthcheck:
       test: curl --fail http://localhost:3001/health-check || exit 1
       interval: 30s
@@ -46,7 +68,7 @@ services:
     networks:
       - booking-service-db-network
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "booking-mysql-container"]
+      test: ["CMD", "mysqladmin ping --password=$(echo $MYSQL_ROOT_PASSWORD)"]
       timeout: 20s
       retries: 10
 
@@ -59,10 +81,9 @@ services:
       - booking-service-db-network
       - microservice-network
     ports:
-      - "3002:3002"
+      - "3002"
     depends_on:
-      booking-db:
-        condition: service_healthy
+      - booking-db
     healthcheck:
       test: curl --fail http://localhost:3002/health-check || exit 1
       interval: 30s
@@ -82,7 +103,7 @@ services:
     networks:
       - transaction-service-db-network
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "transaction-mysql-container"]
+      test: ["CMD", "mysqladmin ping --password=$(echo $MYSQL_ROOT_PASSWORD) 2>/dev/null"]
       timeout: 20s
       retries: 10
 
@@ -95,10 +116,9 @@ services:
       - transaction-service-db-network
       - microservice-network
     ports:
-      - "3003:3003"
+      - "3003"
     depends_on:
-      transaction-db:
-        condition: service_healthy
+      - transaction-db
     healthcheck:
       test: curl --fail http://localhost:3003/health-check || exit 1
       interval: 30s

@@ -7,6 +7,6 @@ module.exports = {
         database: 'booking_db',
     },
 	endpoints: {
-		user_microservice: "http://user-microservice:3001"
+		api_gateway: "http://api-gateway:3000"
 	}
 };
